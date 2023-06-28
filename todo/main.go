@@ -34,7 +34,7 @@ type (
 	todo struct {
 		ID        string    `json:"id"`
 		Title     string    `json:"title"`
-		Completed bool    `json:"completed"`
+		Completed bool      `json:"completed"`
 		CreatedAt time.Time `json:"created_at"`
 	}
 )
@@ -74,14 +74,17 @@ func fetchTodos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	todoList := []todo{}
-	for _,t :=range todos{
+	for _, t := range todos {
 		todoList = append(todoList, todo{
-			ID: t.ID.Hex(),
-			Title: t.Title,
+			ID:        t.ID.Hex(),
+			Title:     t.Title,
 			Completed: t.Completed,
 			CreatedAt: t.CreatedAt,
 		})
 	}
+	rnd.JSON(w, http.StatusOK, renderer.M{
+		"data": todoList,
+	})
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
