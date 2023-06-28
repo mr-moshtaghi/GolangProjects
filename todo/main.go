@@ -23,7 +23,7 @@ const (
 	hostName       string = "localhost:27017"
 	dbName         string = "demo-todo"
 	collectionName string = "todo"
-	port           string = ":9000"
+	port           string = ":8003"
 )
 
 type (
@@ -122,26 +122,59 @@ func createTodo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func deleteTodo(w http.ResponseWriter, r *http.Request)  {
+func deleteTodo(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(chi.URLParam(r, "id"))
 
-	if !bson.IsObjectIdHex(id){
+	if !bson.IsObjectIdHex(id) {
 		rnd.JSON(w, http.StatusBadRequest, renderer.M{
 			"message": "the id is invalid",
 		})
 		return
 	}
 
-	if err:= db.C(collectionName).RemoveId(bson.IsObjectIdHex(id)); err!=nil{
+	if err := db.C(collectionName).RemoveId(bson.IsObjectIdHex(id)); err != nil {
 		rnd.JSON(w, http.StatusProcessing, renderer.M{
 			"message": "Faild to delete todo",
-			"error": err,
+			"error":   err,
 		})
 		return
 	}
 	rnd.JSON(w, http.StatusOK, renderer.M{
 		"message": "todo delete successfully",
 	})
+}
+
+func updateTodo(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimSpace(chi.URLParam(r, "id"))
+
+	if !bson.IsObjectIdHex(id) {
+		rnd.JSON(w, http.StatusBadRequest, renderer.M{
+			"message": "the id is invalid",
+		})
+		return
+	}
+	var t todo
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+		rnd.JSON(w, http.StatusProcessing, err)
+	}
+
+	if t.Title == "" {
+		rnd.JSON(w, http.StatusBadRequest, renderer.M{
+			"message": "the title field id required",
+		})
+		return
+	}
+
+	if err := db.C(collectionName).Update(
+		bson.M{"_id": bson.ObjectIdHex(id)},
+		bson.M{"title": t.Title, "completed": t.Completed},
+	); err != nil {
+		rnd.JSON(w, http.StatusProcessing, renderer.M{
+			"message": "failed to update todo",
+			"error":   err,
+		})
+		return
+	}
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
