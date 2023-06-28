@@ -34,7 +34,7 @@ type (
 	todo struct {
 		ID        string    `json:"id"`
 		Title     string    `json:"title"`
-		Completed string    `json:"completed"`
+		Completed bool    `json:"completed"`
 		CreatedAt time.Time `json:"created_at"`
 	}
 )
@@ -61,6 +61,32 @@ func todoHandler() http.Handler {
 		r.Put("/{id}", updateTodo)
 		r.Delete("/{id}", deleteTodo)
 	})
+	return rg
+}
+
+func fetchTodos(w http.ResponseWriter, r *http.Request) {
+	todos := []todoModel{}
+	if err := db.C(collectionName).Find(bson.M{}).All(&todos); err != nil {
+		rnd.JSON(w, http.StatusProcessing, renderer.M{
+			"message": "Failed to fetch todo",
+			"error":   err,
+		})
+		return
+	}
+	todoList := []todo{}
+	for _,t :=range todos{
+		todoList = append(todoList, todo{
+			ID: t.ID.Hex(),
+			Title: t.Title,
+			Completed: t.Completed,
+			CreatedAt: t.CreatedAt,
+		})
+	}
+}
+
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	err := rnd.Template(w, http.StatusOK, []string{"/static/home.tpl"}, nil)
+	checkErr(err)
 }
 
 func main() {
@@ -90,6 +116,6 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	srv.Shutdown(ctx)
 	defer cancel(
-		log.Println("server gracefully stopped")
-		)
+		log.Println("server gracefully stopped"),
+	)
 }
