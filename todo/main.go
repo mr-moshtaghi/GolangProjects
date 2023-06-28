@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/thedevsaddam/renderer"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 )
 
@@ -87,6 +89,61 @@ func fetchTodos(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func createTodo(w http.ResponseWriter, r *http.Request) {
+	var t todo
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+		rnd.JSON(w, http.StatusProcessing, err)
+		return
+	}
+
+	if t.Title == "" {
+		rnd.JSON(w, http.StatusBadRequest, renderer.M{
+			"message": "the title is required.",
+		})
+		return
+	}
+	tm := todoModel{
+		ID:        bson.NewObjectId(),
+		Title:     t.Title,
+		Completed: false,
+		CreatedAt: time.Now(),
+	}
+
+	if err := db.C(collectionName).Insert(&tm); err != nil {
+		rnd.JSON(w, http.StatusProcessing, renderer.M{
+			"message": "Faild to save todo",
+			"error":   err,
+		})
+		return
+	}
+	rnd.JSON(w, http.StatusCreated, renderer.M{
+		"message": "todo created successfully",
+		"todo_id": tm.ID.Hex(),
+	})
+}
+
+func deleteTodo(w http.ResponseWriter, r *http.Request)  {
+	id := strings.TrimSpace(chi.URLParam(r, "id"))
+
+	if !bson.IsObjectIdHex(id){
+		rnd.JSON(w, http.StatusBadRequest, renderer.M{
+			"message": "the id is invalid",
+		})
+		return
+	}
+
+	if err:= db.C(collectionName).RemoveId(bson.IsObjectIdHex(id)); err!=nil{
+		rnd.JSON(w, http.StatusProcessing, renderer.M{
+			"message": "Faild to delete todo",
+			"error": err,
+		})
+		return
+	}
+	rnd.JSON(w, http.StatusOK, renderer.M{
+		"message": "todo delete successfully",
+	})
+}
+
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	err := rnd.Template(w, http.StatusOK, []string{"/static/home.tpl"}, nil)
 	checkErr(err)
@@ -118,7 +175,7 @@ func main() {
 	log.Println("shutting down server")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	srv.Shutdown(ctx)
-	defer cancel(
-		log.Println("server gracefully stopped"),
-	)
+	defer cancel()
+	log.Println("server gracefully stopped")
+
 }
