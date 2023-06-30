@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+var SECRET = []byte("super-secret-auth-key")
+var api_key = "4321"
+
 func GetJwt(w http.ResponseWriter, r *http.Request) {
 	if r.Header["Access"] != nil {
 		if r.Header["Access"][0] != api_key {
@@ -49,7 +52,6 @@ func ValidateJWT(next func(w http.ResponseWriter, r *http.Request)) http.Handler
 	})
 }
 
-
 func CreateJWT() (string, error) {
 
 	token := jwt.New(jwt.SigningMethodHS256)
@@ -66,4 +68,17 @@ func CreateJWT() (string, error) {
 	}
 
 	return tokenStr, nil
+}
+
+func Home(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "super secret area")
+}
+
+func main() {
+
+	http.Handle("/api", ValidateJWT(Home))
+	http.HandleFunc("/jwt", GetJwt)
+
+	http.ListenAndServe(":3500", nil)
+
 }
