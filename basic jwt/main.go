@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"net/http"
+	"time"
 )
 
 func GetJwt(w http.ResponseWriter, r *http.Request) {
@@ -46,4 +47,23 @@ func ValidateJWT(next func(w http.ResponseWriter, r *http.Request)) http.Handler
 			w.Write([]byte("not authorized"))
 		}
 	})
+}
+
+
+func CreateJWT() (string, error) {
+
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	claims := token.Claims.(jwt.MapClaims)
+
+	claims["exp"] = time.Now().Add(time.Hour).Unix()
+
+	tokenStr, err := token.SignedString(SECRET)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return "", err
+	}
+
+	return tokenStr, nil
 }
